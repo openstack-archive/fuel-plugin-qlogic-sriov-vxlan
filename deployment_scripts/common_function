@@ -1,0 +1,31 @@
+#!/bin/bash
+function get_mos_version() {
+        mos_version=$(ruby -r hiera -r yaml -e 'hiera = Hiera.new(:config => '\''/etc/puppet/hiera.yaml'\''); out = hiera.lookup '\'''"fuel_version"''\'', [], {}; puts out')
+        echo $mos_version
+}
+
+function get_values() {
+        arg="$1"
+        q_value=$(ruby -r hiera -r yaml -e "hiera = Hiera.new(:config => '/etc/puppet/hiera.yaml'); qlogic = hiera.lookup 'fuel-plugin-qlogic-sriov', [], {};  puts qlogic['"$arg"']")
+        echo $q_value
+}
+
+function insert_value() {
+	stanza=$1
+	section=$2
+	file_location=$3
+	grep -w '^'$stanza'' $file_location || sed -i "$section\+/s//\0\n$stanza/" $file_location
+}
+function insert_value_at_start() {
+	stanza=$1
+	section=$2
+	file_location=$3
+	grep -w '^\s*'$stanza'\s*=.*'$section'.*' $file_location || sed -ri 's/(^\s*'$stanza'\s*=\s*)/\1'$section',/g' $file_location 
+
+}
+
+readonly MOS_VER=`get_mos_version`
+readonly E3VFS=`get_values num_10G_vfs`
+readonly VLAN_STATUS=`get_values nic_vlan_support`
+readonly VLAN_MIN_RANGE=`get_values nic_10G_vlan_min_range`
+readonly VLAN_MAX_RANGE=`get_values nic_10G_vlan_max_range`
