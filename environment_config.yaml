@@ -1,0 +1,41 @@
+attributes:
+
+   nic_10G:
+    value: false
+    label: 'Enbale SR-IOV for QLogic NX2 10G Ethernet'
+    Description: 'Enable SRIOV Support for QLogic NX2 10GbE Single and Dual Port Adapter'
+    weight: 10
+    type: 'checkbox'
+   
+   num_10G_vfs:
+    value: '16'
+    label: 'Number of VFs'
+    description: 'Number of Virtual Functions to create on the Qlogic 10G NIC for all port with Link UP'
+    weight: 11 
+    type: 'text'
+    regex:
+      source: "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+      error: "Invalid Virtual NICs number. Please use a number in the range of 0-255."
+    restrictions:
+    - condition: "settings:fuel-plugin-qlogic-sriov.nic_10G.value == false or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
+      message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
+   
+   nic_25G:
+    value: false
+    label: 'Enable SR-IOV for FastLinQ QL45212-DE 25GbE Adapter'
+    Description: 'Enable SRIOV Support for QLogic 25GbE Single port and Dual Port Adapter'
+    weight: 22
+    type: 'checkbox'
+   
+   num_25G_vfs:
+    value: '16'
+    label: 'Number of VFs'
+    description: 'Number of Virtual Functions to create on the Qlogic 25G NIC board for all port with Link UP'
+    weight: 23
+    type: 'text'
+    regex:
+      source: "^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$"
+      error: "Invalid Virtual NICs number. Please use a number in the range of 0-255."
+    restrictions:
+    - condition: "settings:fuel-plugin-qlogic-sriov.nic_25G.value == false or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
+      message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 25G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type. "
