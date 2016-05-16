@@ -7,7 +7,11 @@ count=0;
 #echo "Compute node" > /tmp/compute-sriov.txt
 
 # Find out Qlogic/E3 Adapter.
-ethx=`ls /sys/class/net/eth*/device/vendor`
+# Comment : Line 10
+# Use * instead of eth* to catch up all the interfaces. Also, NIC naming schema was changed in Fuel8.0 so interfaces are 
+# no longer named as eth*.
+
+ethx=`ls /sys/class/net/*/device/vendor`
 for  interface_name in $ethx; do
 	vendor=`cat $interface_name`
 	if [ $vendor == "0x14e4" ]
@@ -22,6 +26,8 @@ for  interface_name in $ethx; do
 done
 
 #Find out Supported NIC with Link UP
+# Comment : Line 29
+# user guide has added with configuration that Link UP is require for SR-IOV Configuration
 count_eths_up=0
 for i in "${q_eths[@]}" 
 do
@@ -53,19 +59,22 @@ done
 
 
 # Add Entry in /etc/nova/nova.conf
+# Comment : Line 61
+# "cp" will always overwrite a file. It's better to rewrite this part like that: grep || (sed;cp) Or even use 'sed -i' to do an in-place substitution.
+
 cp /etc/nova/nova.conf /etc/nova/nova.conf.org
 
 for (( count = 0; count < ${q_eth_len} ; count++ ));
 do
-	grep -w '^pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf ||  sed '0,/\[DEFAULT\]/ a pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf >  /etc/nova/nova_q.conf
-	cp /etc/nova/nova_q.conf /etc/nova/nova.conf 
+	grep -w '^pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf ||  sed -i '0,/\[DEFAULT\]/ a pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf 
 done
 
 
 # Add Entry Regarding Security group with NO Firewall Driver.
+# Comment : Line 67
+# use 'sed -i' to do an in-place substitution
 cp /etc/neutron/plugins/ml2/ml2_conf.ini /etc/neutron/plugins/ml2/ml2_conf.ini.org
-grep -w '^firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini || sed '/\[securitygroup\]/ a firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini > /etc/neutron/plugins/ml2/ml2_conf_q.ini
-cp -r /etc/neutron/plugins/ml2/ml2_conf_q.ini /etc/neutron/plugins/ml2/ml2_conf.ini
+grep -w '^firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini || sed -i '/\[securitygroup\]/ a firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini 
 
 
 # Add Physical Device Mappings.

@@ -1,6 +1,0 @@
-- name: additional_service:fuel-plugin-qlogic-sriov
-  compatible: []
-  requires: []
-  incompatible: []
-  label: "Plugin label, that will be shown on UI"
-  description: "Component description (optional)"

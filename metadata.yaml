@@ -33,11 +33,8 @@ releases:
     mode: ['ha', 'multinode']
     deployment_scripts_path: deployment_scripts/
     repository_path: repositories/ubuntu
-  - os: centos
-    version: 2015.1.0-7.0
-    mode: ['ha', 'multinode']
-    deployment_scripts_path: deployment_scripts/
-    repository_path: repositories/centos
+# Comment : Line 36
+# Only support for ubuntu
 
 # Version of plugin package
 package_version: '3.0.0'

@@ -3,7 +3,6 @@
   role: '*' 
   required_for: [post_deployment_end]
   requires: [post_deployment_start]
-  priority : 50 
   parameters:
     cmd: bash enable_iommu.sh
     retries: 3
@@ -14,8 +13,7 @@
   role: ['compute'] 
   type: reboot
   required_for: [post_deployment_end]
-  requires: [post_deployment_start]
-  priority : 100
+  requires: [fuel-plugin-iommu-sh]
   parameters:
     timeout: 600
 
@@ -23,8 +21,7 @@
   type: shell
   role: ['compute']
   required_for: [post_deployment_end]
-  requires: [post_deployment_start]
-  priority : 101
+  requires: [fuel-plugin-qlogic-sriov-compute-reboot]
   parameters:
     cmd: bash deploy_compute.sh
     retries: 3
@@ -35,8 +32,7 @@
   type: shell
   role: ['primary-controller', 'controller']
   required_for: [post_deployment_end]
-  requires: [post_deployment_start]
-  priority : 102
+  requires: [fuel-plugin-qlogic-sriov-compute-deployment-sh]
   parameters:
     cmd: bash deploy_controller.sh 
     retries: 3
