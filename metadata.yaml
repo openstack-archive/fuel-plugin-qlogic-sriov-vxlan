@@ -5,13 +5,13 @@ name: fuel-plugin-qlogic-sriov
 title: Qlogic OpenStack Fuel plugin for SRIOV configuration
 
 # Plugin version
-version: '3.0.0'
+version: '1.0.0'
 
 # Description
 description: Configure SRIOV features on Qlogic adapters
 
 # Required fuel version
-fuel_version: ['7.0']
+fuel_version: ['7.0','8.0']
 
 # Specify license of your plugin
 licenses: ['Apache License Version 2.0']
@@ -33,6 +33,12 @@ releases:
     mode: ['ha', 'multinode']
     deployment_scripts_path: deployment_scripts/
     repository_path: repositories/ubuntu
+  - os: ubuntu
+    version: liberty-8.0
+    mode: ['ha']
+    deployment_scripts_path: deployment_scripts/
+    repository_path: repositories/ubuntu
+
 # Comment : Line 36
 # Only support for ubuntu
 

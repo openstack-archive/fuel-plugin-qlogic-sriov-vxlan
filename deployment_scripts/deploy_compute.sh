@@ -1,16 +1,14 @@
 #!/bin/bash
-
 set -x
-#set -ieux
+readonly DSDIR=$(dirname "$0")
+source $DSDIR/common_function
+
 count=0;
-#num_vfs=8;
-#echo "Compute node" > /tmp/compute-sriov.txt
 
-# Find out Qlogic/E3 Adapter.
-# Comment : Line 10
-# Use * instead of eth* to catch up all the interfaces. Also, NIC naming schema was changed in Fuel8.0 so interfaces are 
-# no longer named as eth*.
+stor_nw_interface=`brctl show | grep br-storage  | xargs | cut -d' ' -f4`
+mgmt_nw_interface=`brctl show | grep br-mgmt  | xargs | cut -d' ' -f4`
 
+# Find out Qlogic/E3 Adapter
 ethx=`ls /sys/class/net/*/device/vendor`
 for  interface_name in $ethx; do
 	vendor=`cat $interface_name`
@@ -19,15 +17,17 @@ for  interface_name in $ethx; do
 		qlogic_eth=`echo $interface_name | cut -f5 -d "/"`
 		if [  -f /sys/class/net/$qlogic_eth/device/sriov_numvfs ]
 		then
-			 q_eths[$count]=$qlogic_eth;
-			 count=$((count+1));
+			 
+			 if [ $qlogic_eth != $stor_nw_interface ] && [ $qlogic_eth != $mgmt_nw_interface ]
+			 then
+			 	ifconfig $qlogic_eth up
+			 	q_eths[$count]=$qlogic_eth;
+			 	count=$((count+1));
+			 fi
 		fi		
 	fi
 done
-
 #Find out Supported NIC with Link UP
-# Comment : Line 29
-# user guide has added with configuration that Link UP is require for SR-IOV Configuration
 count_eths_up=0
 for i in "${q_eths[@]}" 
 do
@@ -35,56 +35,88 @@ do
 		if [ $port_state == "up" ]
 		then
 			q_eths_up[$count_eths_up]=$i;
-			count_eths_up=$((count_eths_up+1));
+			break;
+			#count_eths_up=$((count_eths_up+1));
 		fi
 done
 echo "SR-IOV Supported Nic with Link up: ${q_eths_up[0]}"
 
-# Add entry in Grub
-#cp /etc/default/grub /etc/default/grub.orig	 
-#sed -i 's/GRUB_CMDLINE_LINUX_DEFAULT=.*/GRUB_CMDLINE_LINUX_DEFAULT="nomdmonddf nomdmonisw intel_iommu=on"/g' /etc/default/grub
-#update-grub
-
 # Enable VFs
 q_eth_len=${#q_eths_up[@]}
-
-n_10G_vfs=`ruby -r hiera -r yaml -e "hiera = Hiera.new(:config => '/etc/puppet/hiera.yaml'); qlogic = hiera.lookup 'fuel-plugin-qlogic-sriov', [], {};  puts qlogic['"num_10G_vfs"']"`
-
+n_10G_vfs=`get_values num_10G_vfs`
 for (( count = 0; count < ${q_eth_len} ; count++ ));
-do 
-	echo $n_10G_vfs > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs
-	cp /etc/rc.local /etc/rc.local.orig
-	echo "echo '$n_10G_vfs' > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs" >> /etc/rc.local
+do
+	sriov_totalvfs=`cat /sys/class/net/${q_eths_up[$count]}/device/sriov_totalvfs`
+	
+	if [ $sriov_totalvfs -gt $n_10G_vfs ]; then
+ 
+		echo $n_10G_vfs > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs
+		cp /etc/rc.local /etc/rc.local.orig
+		echo "ifconfig ${q_eths_up[$count]} up" >> /etc/rc.local
+		echo "echo '$n_10G_vfs' > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs" >> /etc/rc.local
+	else
+		echo $sriov_totalvfs > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs
+		cp /etc/rc.local /etc/rc.local.orig
+		echo "ifconfig ${q_eths_up[$count]} up"  >> /etc/rc.local
+		echo "echo '$n_10G_vfs' > /sys/class/net/${q_eths_up[$count]}/device/sriov_numvfs" >> /etc/rc.local
+	fi
 done
 
-
 # Add Entry in /etc/nova/nova.conf
-# Comment : Line 61
-# "cp" will always overwrite a file. It's better to rewrite this part like that: grep || (sed;cp) Or even use 'sed -i' to do an in-place substitution.
-
 cp /etc/nova/nova.conf /etc/nova/nova.conf.org
 
 for (( count = 0; count < ${q_eth_len} ; count++ ));
 do
-	grep -w '^pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf ||  sed -i '0,/\[DEFAULT\]/ a pci_passthrough_whitelist={"devname":"'${q_eths_up[$count]}'","physical_network":"Qphysnet"}' /etc/nova/nova.conf 
+	DEVNAME='"devname"'
+	INTERFACE='"'${q_eths_up[$count]}'"'
+	PNETWORK='"physical_network"'
+	PNETWORK_NAME='"Qphysnet"'
+	
+	stanza="pci_passthrough_whitelist={$DEVNAME:$INTERFACE,$PNETWORK:$PNETWORK_NAME}"
+	section="0,/\[DEFAULT\]"
+	insert_value $stanza $section /etc/nova/nova.conf
 done
 
 
-# Add Entry Regarding Security group with NO Firewall Driver.
-# Comment : Line 67
-# use 'sed -i' to do an in-place substitution
-cp /etc/neutron/plugins/ml2/ml2_conf.ini /etc/neutron/plugins/ml2/ml2_conf.ini.org
-grep -w '^firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini || sed -i '/\[securitygroup\]/ a firewall_driver = neutron.agent.firewall.NoopFirewallDriver' /etc/neutron/plugins/ml2/ml2_conf.ini 
+if [ $MOS_VER == "8.0" ] 
+then 
+	
+	#Add entry in libvirt-qemu for rw operations of /sys/device
+        apprmd_file_location=/etc/apparmor.d/abstractions/libvirt-qemu
+
+   	grep -wF "  /sys/devices/system/** r," $apprmd_file_location || sed -i /signal/i"\ \ /sys/devices/system/** r," $apprmd_file_location
+        grep -wF "  /sys/bus/pci/devices/ r," $apprmd_file_location || sed -i /signal/i"\ \ /sys/bus/pci/devices/ r," $apprmd_file_location
+        grep -wF "  /sys/bus/pci/devices/** r," $apprmd_file_location  || sed -i /signal/i"\ \ /sys/bus/pci/devices/** r," $apprmd_file_location
+        grep -wF "  /sys/devices/pci*/** rw,"  $apprmd_file_location || sed -i /signal/i"\ \ /sys/devices/pci*/** rw," $apprmd_file_location
+        grep -wF "  /{,var/}run/openvswitch/vhu* rw," $apprmd_file_location || sed -i /signal/i"\ \ /{,var/}run/openvswitch/vhu* rw," $apprmd_file_location
 
 
-# Add Physical Device Mappings.
-m1="" 
-for (( count = 0; count < ${q_eth_len} ; count++ ));
-do
-	p_eths[$count]="Qphysnet:${q_eths_up[$count]}"
-done
-device_mapping_string=$(printf ",%s" "${p_eths[@]}")
-device_mapping_string=${device_mapping_string:1}
-echo $device_mapping_string
-grep -w '^physical_device_mappings='${device_mapping_string}'' /etc/neutron/plugins/ml2/ml2_conf_sriov.ini || awk '{ print } !flag && /\[sriov_nic\]/ { print "physical_device_mappings='${device_mapping_string}'"; flag =1 }' /etc/neutron/plugins/ml2/ml2_conf_sriov.ini  > /etc/neutron/plugins/ml2/ml2_conf_sriov_q.ini
-cp /etc/neutron/plugins/ml2/ml2_conf_sriov_q.ini /etc/neutron/plugins/ml2/ml2_conf_sriov.ini
+	apt-get install neutron-plugin-sriov-agent -y
+	service neutron-plugin-sriov-agent restart
+	
+	# Add Physical Device Mappings in sriov_agent.ini
+	for (( count = 0; count < ${q_eth_len} ; count++ ));
+	do
+		p_eths[$count]="Qphysnet:${q_eths_up[$count]}"
+	done
+	device_mapping_string=$(printf ",%s" "${p_eths[@]}")
+	device_mapping_string=${device_mapping_string:1}
+
+	echo $device_mapping_string
+
+	cp /etc/neutron/plugins/ml2/sriov_agent.ini /etc/neutron/plugins/ml2/sriov_agent.ini.org
+
+	stanza="physical_device_mappings=${device_mapping_string}"
+	section="0,/\[sriov_nic\]"
+	insert_value $stanza $section /etc/neutron/plugins/ml2/sriov_agent.ini
+
+	stanza='[securitygroup]'
+	grep -w '\[securitygroup\]' /etc/neutron/plugins/ml2/sriov_agent.ini || echo "$stanza" >> /etc/neutron/plugins/ml2/sriov_agent.ini
+
+	stanza='firewall_driver=neutron.agent.firewall.NoopFirewallDriver'
+	section="0,/\[securitygroup\]"
+	insert_value $stanza $section /etc/neutron/plugins/ml2/sriov_agent.ini
+	
+fi
+service libvirtd restart
+service nova-compute restart
