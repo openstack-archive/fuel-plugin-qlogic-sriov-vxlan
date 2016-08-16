@@ -2,7 +2,7 @@ attributes:
 
    nic_10G:
     value: false
-    label: 'Enbale SR-IOV for QLogic NX2 10G Ethernet'
+    label: 'Enable SR-IOV for QLogic NX2 10G Ethernet'
     Description: 'Enable SRIOV Support for QLogic NX2 10GbE Single and Dual Port Adapter'
     weight: 10
     type: 'checkbox'

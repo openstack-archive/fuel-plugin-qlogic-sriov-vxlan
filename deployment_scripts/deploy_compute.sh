@@ -27,6 +27,8 @@ for  interface_name in $ethx; do
 		fi		
 	fi
 done
+
+sleep 20;
 #Find out Supported NIC with Link UP
 count_eths_up=0
 for i in "${q_eths[@]}" 
@@ -43,7 +45,7 @@ echo "SR-IOV Supported Nic with Link up: ${q_eths_up[0]}"
 
 # Enable VFs
 q_eth_len=${#q_eths_up[@]}
-n_10G_vfs=$VFS
+n_10G_vfs=$E3VFS
 for (( count = 0; count < ${q_eth_len} ; count++ ));
 do
 	sriov_totalvfs=`cat /sys/class/net/${q_eths_up[$count]}/device/sriov_totalvfs`
