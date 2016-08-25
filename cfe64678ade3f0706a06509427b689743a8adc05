@@ -1,0 +1,9 @@
+Code-Review+1: Andrey Danin <gcon.monolake@gmail.com>
+Code-Review+2: Rick Hicksted <rick.hicksted@qlogic.com>
+Workflow+1: Rick Hicksted <rick.hicksted@qlogic.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 25 Aug 2016 15:07:36 +0000
+Reviewed-on: https://review.openstack.org/293136
+Project: openstack/fuel-plugin-qlogic-sriov-vxlan
+Branch: refs/heads/experimental
