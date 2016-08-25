@@ -1,0 +1,8 @@
+Code-Review+2: Rick Hicksted <rick.hicksted@qlogic.com>
+Workflow+1: Rick Hicksted <rick.hicksted@qlogic.com>
+Verified+2: Jenkins
+Submitted-by: Jenkins
+Submitted-at: Thu, 25 Aug 2016 15:08:00 +0000
+Reviewed-on: https://review.openstack.org/356002
+Project: openstack/fuel-plugin-qlogic-sriov-vxlan
+Branch: refs/heads/experimental
