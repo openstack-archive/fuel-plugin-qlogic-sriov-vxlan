@@ -1,0 +1,132 @@
+#!/bin/bash
+CURRENT_NODE_LIST="/tmp/current_node_list"
+USAGE="$(basename "$0") -h [-e n] [-a] 
+
+where:
+    -h  show this help text
+    -e  reboot the given env id
+    -a  reboot all discover nodes"
+
+isnum() { awk -v a="$1" 'BEGIN {print (a == a + 0)}'; }
+printdot() { 
+	starttime=`date +%s`
+        timespan=$1 #some number of seconds
+        endtime=`expr $timespan + $starttime`
+
+        while (( `date +%s` < $endtime )) ; do
+                echo -ne "."
+                sleep 10
+        done
+}
+
+if [ $# == 0 ] ; then
+    echo "$USAGE"
+    exit 1;
+fi
+
+while getopts ":hae:" optname
+  do
+    case "$optname" in
+      "e")
+	shift
+	envid=$OPTARG
+	check_number=`isnum "$envid"`
+        if [ "$check_number" != "1" ]; then
+		echo "$USAGE"
+		exit 0;
+	fi
+	;;
+      "a")
+	shift 
+	envid=-1
+        
+	if [ ! -z $1 ]; then
+		echo "$USAGE"
+		exit 0;
+	fi
+	
+	;;
+      "h")
+        echo "$USAGE"
+        exit 0;
+        ;;
+      ?)
+        echo "Unknown option $OPTARG"
+	echo "$USAGE"
+        exit 0;
+        ;;
+      :)
+        echo "No argument value for option $OPTARG"
+        exit 0;
+        ;;
+      *)
+        echo "Unknown error while processing options"
+        exit 0;
+        ;;
+    esac
+  done
+
+if [ ! -z $envid ] && [ "$envid" != "-1" ]; then
+	fuel nodes > $CURRENT_NODE_LIST 
+	envlist=`cat $CURRENT_NODE_LIST  | cut -d "|" -f4 | sort -u |  sed 's/cluster//g' | sed 's/-//g' `	
+	for envnumber in $envlist; do
+		if [ "$envnumber" == "$envid" ]; then
+			fuel reset --env $envid
+			echo "Reset environment $envid"
+			fuel node --env $envid > "$CURRENT_NODE_LIST"_"$envid"
+			nodelist=`cat "$CURRENT_NODE_LIST"_"$envid" | cut -d "|" -f1 | sed 's/id//g' | sed 's/-//g'`
+			iplist=`cat "$CURRENT_NODE_LIST"_"$envid" | cut -d "|" -f5 | sed 's/ip//g' | sed 's/-//g'`
+			flag=1
+		fi
+	done
+	if [ "$flag" != "1" ]; then
+		echo "Not able to find given enviornment id"
+		exit 0
+	fi
+fi
+
+
+if [ ! -z $envid ] && [ "$envid" == "-1" ]; then
+	
+	fuel nodes > $CURRENT_NODE_LIST
+	echo "Reset all Discover nodes"
+	iplist=`cat $CURRENT_NODE_LIST | grep discover | cut -d "|" -f5`
+	nodelist=`cat $CURRENT_NODE_LIST | grep discover | cut -d "|" -f1`
+	echo "Reboot All Discover nodes..."
+	for ip in $iplist; do
+		ssh -o BatchMode=yes -o StrictHostKeyChecking=no $ip "reboot" &> /dev/null
+	done
+fi
+
+echo "Check to see if all node comes up...(Wait for at max 500 Seconds) "
+
+
+printdot 200
+echo ""
+
+starttime_q=`date +%s`
+timespan_q=300 #some number of seconds
+endtime_q=`expr $timespan_q + $starttime_q`
+
+while (( `date +%s` < $endtime_q )) ; do
+	for node in $nodelist; do
+	 	online_status=`fuel node --node $node | cut -d "|" -f9 | sed 's/online//g' | sed 's/-//g'`
+	 	if [ $online_status == "True" ]; then
+			echo "Node node-$node is online"
+			nodelist=( "${nodelist[@]/$node}" )
+			wc=`echo $nodelist| wc -w`
+			if [ $wc == "0" ]; then
+				echo "All nodes are online..."
+				exit 0;
+			fi
+		else
+			echo "Node node-$node is offline"
+	 	fi
+	done
+
+	printdot 50
+	echo ""
+done
+
+echo "Please check manually if nodes are come online or not..."
+exit 0
