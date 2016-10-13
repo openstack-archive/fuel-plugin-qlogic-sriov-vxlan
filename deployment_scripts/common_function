@@ -25,7 +25,14 @@ function insert_value_at_start() {
 }
 
 readonly MOS_VER=`get_mos_version`
+readonly E3ENABLE=`get_values nic_10G` 
 readonly E3VFS=`get_values num_10G_vfs`
 readonly VLAN_STATUS=`get_values nic_vlan_support`
 readonly VLAN_MIN_RANGE=`get_values nic_10G_vlan_min_range`
 readonly VLAN_MAX_RANGE=`get_values nic_10G_vlan_max_range`
+
+readonly E4ENABLE=`get_values nic_fastlinq` 
+readonly E4VFS=`get_values num_fastlinq_vfs`
+readonly FASTLINQ_VLAN_STATUS=`get_values nic_fastlinq_vlan_support`
+readonly FASTLINQ_VLAN_MIN_RANGE=`get_values nic_fastlinq_vlan_min_range`
+readonly FASTLINQ_VLAN_MAX_RANGE=`get_values nic_fastlinq_vlan_max_range`
