@@ -1,14 +1,32 @@
 #!/bin/bash
 FUEL_BOOTSTRAP_DIR="/var/www/nailgun/bootstraps/active_bootstrap/"
-BACKUP_BOOTSTRAP_NUMBER_FILE="/tmp/bootstrap_backup"
 BOOTSTRAP_CLI_YAML_FILE="/etc/fuel-bootstrap-cli/fuel_bootstrap_cli.yaml"
 BACKUP_BOOTSTRAP_CLI_YAML_FILE="/etc/fuel-bootstrap-cli/fuel_bootstrap_cli.yaml.bkup"
 FASTLINQ_REPO_DIR="/var/www/nailgun/fastlinq_repo/ubuntu"
 FUEL_PLUGIN_DIR="/var/www/nailgun/plugins/fuel-plugin-qlogic-sriov*"
+BACKUP_BOOTSTRAP_NUMBER_FILE="/var/fastlinq_backup/bootstrap_backup"
+TEMP_INITRDDIR="/var/initrd-orig/"
+FUEL_VERSION=`cat /etc/fuel_release`
 FUEL_MASTER_IP=`hostname`
+
+
+fastlinq_bootstrap=`fuel-bootstrap list | grep fastlinq_bootstrap | cut -d "|" -f2`
+if [ ! -z $fastlinq_bootstrap ]; then
+	is_activate=`fuel-bootstrap list | grep fastlinq_bootstrap | cut -d "|" -f4 | tr -d ' '`
+	if [ "$is_activate" == "active" ]; then
+		echo "You already have activated Fastlinq bootstrap, Please delete it 
+		      and activate Original Bootstrap for MOS 8.0/9.0 to create New fastlinq bootstrap"
+		exit 0;
+	fi
+fi
+
+if [ ! -d $FASTLINQ_REPO_DIR ]; then
+	mkdir -p $FASTLINQ_REPO_DIR
+fi
 
 active_bootstrap=`fuel-bootstrap list | grep active | cut -d "|" -f2`
 if [ ! -z $active_bootstrap ]; then
+	mkdir -p /var/fastlinq_backup/
 	echo $active_bootstrap > $BACKUP_BOOTSTRAP_NUMBER_FILE
 	echo "Backup Current Active Bootstrap Image"
 fi
@@ -18,22 +36,19 @@ if [ -f $BOOTSTRAP_CLI_YAML_FILE ]; then
 	echo "Backup Current Bootstrap cli yaml file"
 fi
 
-if [ ! -d $FASTLINQ_REPO_DIR ]; then
-	mkdir -p $FASTLINQ_REPO_DIR
-fi
-	# installed dpkg-dev package, if it is not there
-	yum -y install dpkg-dev
+# installed dpkg-dev package, if it is not there
+yum -y install dpkg-dev
 
-	# create repo meta-data
-        cp -f $FUEL_PLUGIN_DIR/deployment_scripts/debpackage/fastlinq-dkms*.deb $FASTLINQ_REPO_DIR 
-	pushd $FASTLINQ_REPO_DIR
-	dpkg-scanpackages ./ /dev/null | gzip -9c > Packages.gz
-        popd
+# create repo meta-data
+cp -f $FUEL_PLUGIN_DIR/deployment_scripts/debpackage/fastlinq-dkms*.deb $FASTLINQ_REPO_DIR 
+pushd $FASTLINQ_REPO_DIR
+dpkg-scanpackages ./ /dev/null | gzip -9c > Packages.gz
+popd
 
 	# Create Release file
-	echo -e "Origin: user_custom\nLabel: custom\nSuite: user_custom\nCodename: \
-        user_custom\nArchitectures: amd64\nComponents: main\nDescription: custom" \
-        > $FASTLINQ_REPO_DIR/Release
+mkdir -p $FASTLINQ_REPO_DIR/dists/
+echo -e "Origin: user_custom\nLabel: custom\nSuite: user_custom\nCodename: user_custom\nArchitectures: amd64\nComponents: main\nDescription: custom" \
+   	> $FASTLINQ_REPO_DIR/dists/Release
 
 if grep "fastlinq_repo" $BOOTSTRAP_CLI_YAML_FILE
 then
@@ -45,4 +60,41 @@ fi
 	
 fuel-bootstrap --verbose --debug build --package fastlinq-dkms --label fastlinq_bootstrap --extra-dir $FUEL_PLUGIN_DIR/startup_scripts/ --script $FUEL_PLUGIN_DIR/startup_scripts/startup.sh --activate 2>&1 | tee /tmp/fastlinq_bootstrap.log
 
-dockerctl shell cobbler cobbler sync
+if [ -d $TEMP_INITRDDIR ]; then
+	rm -rf $TEMP_INITRDDIR
+fi
+
+mkdir -p $TEMP_INITRDDIR/initramfs
+cp -r /var/www/nailgun/bootstraps/active_bootstrap/{initrd.img,root.squashfs} $TEMP_INITRDDIR 
+cd /var/initrd-orig/
+mv initrd.img initrd.img.xz
+xz -d initrd.img.xz
+
+cd initramfs
+cpio -i < ../initrd.img
+cd ..
+
+kernel_version=`ls ./initramfs/lib/modules/`
+
+unsquashfs root.squashfs
+cp ./squashfs-root/lib/modules/$kernel_version/updates/dkms/qed* ./initramfs/lib/modules/$kernel_version/updates/dkms/
+cp -r ./squashfs-root/lib/firmware/qed ./initramfs/lib/firmware/qed
+depmod -a -b $TEMP_INITRDDIR/initramfs/ -F $TEMP_INITRDDIR/squashfs-root/boot/System.map-$kernel_version $kernel_version
+
+cd initramfs
+find . | cpio --quiet -o -H newc | xz --check=crc32 > ../initrd.img.new
+cd ..
+
+mv /var/www/nailgun/bootstraps/active_bootstrap/initrd.img /var/www/nailgun/bootstraps/active_bootstrap/initrd.img.org
+cp initrd.img.new /var/www/nailgun/bootstraps/active_bootstrap/initrd.img
+
+#fule_version=`cat /etc/fuel_release`
+if [ "$FUEL_VERSION" == "8.0" ]; 
+then
+	dockerctl shell cobbler cobbler sync
+fi
+
+if [ "$FUEL_VERSION" == "9.0" ]; 
+then
+	cobbler sync
+fi

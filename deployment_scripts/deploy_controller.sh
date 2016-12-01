@@ -37,12 +37,15 @@ fi
 
 ## SRIOV File Confiugartion
 cp /etc/neutron/plugins/ml2/ml2_conf_sriov.ini /etc/neutron/plugins/ml2/ml2_conf_sriov.ini.org
-if [ $MOS_VER == "7.0" ]
+if [ $MOS_VER == "7.0" ];
 then
 	sed -i "s/.*agent_required.*=.*/agent_required=false/g" /etc/neutron/plugins/ml2/ml2_conf_sriov.ini
-elif [ $MOS_VER == "8.0" ]
+elif [ $MOS_VER == "8.0" ];
 then
 	sed -i "s/.*agent_required.*=.*/agent_required=true/g" /etc/neutron/plugins/ml2/ml2_conf_sriov.ini
+elif [ $MOS_VER == "9.0" ];
+then
+	echo "No Need to insert "agent_required" value for MOS 9.0 in ml2_conf_sriov.ini"
 else
 	echo "No support of MOS version"
 	exit 1	

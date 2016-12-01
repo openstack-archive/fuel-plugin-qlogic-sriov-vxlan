@@ -23,6 +23,11 @@ function insert_value_at_start() {
 	grep -w '^\s*'$stanza'\s*=.*'$section'.*' $file_location || sed -ri 's/(^\s*'$stanza'\s*=\s*)/\1'$section',/g' $file_location 
 
 }
+function insert_word() {
+	stanza=$1
+	file_location=$2
+	grep -w '^'$stanza'' $file_location || sed -i "1i $stanza" $file_location
+}
 
 readonly MOS_VER=`get_mos_version`
 readonly E3ENABLE=`get_values nic_10G` 

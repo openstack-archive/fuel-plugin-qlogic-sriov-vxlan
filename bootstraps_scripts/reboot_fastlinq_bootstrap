@@ -101,17 +101,18 @@ fi
 echo "Check to see if all node comes up...(Wait for at max 500 Seconds) "
 
 
-printdot 200
+printdot 300
 echo ""
 
 starttime_q=`date +%s`
-timespan_q=300 #some number of seconds
+timespan_q=200 #some number of seconds
 endtime_q=`expr $timespan_q + $starttime_q`
 
 while (( `date +%s` < $endtime_q )) ; do
 	for node in $nodelist; do
-	 	online_status=`fuel node --node $node | cut -d "|" -f9 | sed 's/online//g' | sed 's/-//g'`
-	 	if [ $online_status == "True" ]; then
+	 	#online_status=`fuel node --node $node | cut -d "|" -f9 | sed 's/online//g' | sed 's/-//g'`
+	 	online_status=`fuel node --node $node  | sed 1,2d | cut -d "|" -f9 | tr -d ' '`
+	 	if [ "$online_status" == "True" ] || [ "$online_status" == "1" ]; then
 			echo "Node node-$node is online"
 			nodelist=( "${nodelist[@]/$node}" )
 			wc=`echo $nodelist| wc -w`

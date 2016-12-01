@@ -161,10 +161,20 @@ then
         grep -wF "  /sys/bus/pci/devices/** r," $apprmd_file_location  || sed -i /signal/i"\ \ /sys/bus/pci/devices/** r," $apprmd_file_location
         grep -wF "  /sys/devices/pci*/** rw,"  $apprmd_file_location || sed -i /signal/i"\ \ /sys/devices/pci*/** rw," $apprmd_file_location
         grep -wF "  /{,var/}run/openvswitch/vhu* rw," $apprmd_file_location || sed -i /signal/i"\ \ /{,var/}run/openvswitch/vhu* rw," $apprmd_file_location
-
-
-	apt-get install neutron-plugin-sriov-agent -y
 	
+	# install sriov plugin agent for MOS 8.0
+	apt-get install neutron-plugin-sriov-agent -y
+
+fi
+
+if [ $MOS_VER == "9.0" ]
+then
+	# install sriov plugin agent for MOS 9.0
+	apt-get install neutron-sriov-agent --force-yes -y
+fi
+
+if [ $MOS_VER == "8.0" ] || [ $MOS_VER == "9.0" ]
+then 
 	if [ $E3ENABLE == true ]; then
 		# Add Physical Device Mappings in sriov_agent.ini
 		for (( count = 0; count < ${q_eth_len} ; count++ ));
@@ -178,9 +188,9 @@ then
 	if [ $E4ENABLE == true ]; then
 		for (( count = 0; count < ${q_fastlinq_eth_len} ; count++ ));
         	do
-                	p_eths[$count]="Qphysnet_fastlinq:${q_fastlinq_eths_up[$count]}"
+                	p_eths_fastlinq[$count]="Qphysnet_fastlinq:${q_fastlinq_eths_up[$count]}"
         	done
-        	device_mapping_string_fastlinq=$(printf ",%s" "${p_eths[@]}")
+        	device_mapping_string_fastlinq=$(printf ",%s" "${p_eths_fastlinq[@]}")
         	device_mapping_string_fastlinq=${device_mapping_string_fastlinq:1}
 	fi
 
@@ -196,21 +206,37 @@ then
 		echo "No supported Interface"
 		exit 1
 	fi
+fi
 
+if [ $MOS_VER == "9.0" ]
+then
+	stanza="\[sriov_nic\]"
+	insert_word $stanza /etc/neutron/plugins/ml2/sriov_agent.ini
+fi
 
+if [ $MOS_VER == "8.0" ] || [ $MOS_VER == "9.0" ]
+then
 	stanza="physical_device_mappings=$DEVICE_MAPPING_STRING"
 	section="0,/\[sriov_nic\]"
 	insert_value $stanza $section /etc/neutron/plugins/ml2/sriov_agent.ini
-
+	
 	stanza='[securitygroup]'
 	grep -w '\[securitygroup\]' /etc/neutron/plugins/ml2/sriov_agent.ini || echo "$stanza" >> /etc/neutron/plugins/ml2/sriov_agent.ini
 
 	stanza='firewall_driver=neutron.agent.firewall.NoopFirewallDriver'
 	section="0,/\[securitygroup\]"
 	insert_value $stanza $section /etc/neutron/plugins/ml2/sriov_agent.ini
-	
+fi
+
+if [ $MOS_VER == "9.0" ];
+then
+	service neutron-sriov-agent restart
+elif [ $MOS_VER == "8.0" ]; 
+then
 	service neutron-plugin-sriov-agent restart
-	
+else
+	echo "No sriov agent present"
+
 fi
 service libvirtd restart
 service nova-compute restart
