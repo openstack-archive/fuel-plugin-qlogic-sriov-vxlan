@@ -3,14 +3,14 @@ attributes:
    nic_10G:
     value: false
     label: 'Enable SR-IOV for QLogic NX2 10G Ethernet'
-    Description: 'Enable SRIOV Support for QLogic NX2 10GbE Single and Dual Port Adapter'
+    Description: 'Enable SR-IOV Support for QLogic NX2 10GbE Single and Dual Port Adapter'
     weight: 10
     type: 'checkbox'
    
    num_10G_vfs:
     value: '16'
     label: 'Number of VFs'
-    description: 'Number of Virtual Functions to create on the Qlogic 10G NIC for single port with Link UP'
+    description: 'Number of Virtual Functions to create on the QLogic 10G NIC for single port with Link UP'
     weight: 11 
     type: 'text'
     regex:
@@ -18,12 +18,12 @@ attributes:
       error: "Invalid Virtual NICs number. Please use a number in the range of 1-64."
     restrictions:
     - condition: "settings:fuel-plugin-qlogic-sriov.nic_10G.value == false or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
-      message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
+      message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
    
    nic_vlan_support:
      value: false
-     label: 'Enable VLAN for SRIOV-VF (10G)'
-     Description: 'This will Create SRIOV-NS with VLAN Support'
+     label: 'Enable VLAN for SR-IOV VF (10G)'
+     Description: 'This will assign VLAN to SR-IOV VFs'
      weight: 13
      type: 'checkbox'
 
@@ -38,7 +38,7 @@ attributes:
         error : "Invalid VLAN Number. Please use number between 2-4094"
      restrictions:
      - condition: "(settings:fuel-plugin-qlogic-sriov.nic_10G.value == false and settings:fuel-plugin-qlogic-sriov.nic_vlan_support.value == false) or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"   
-       message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
+       message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
      min: 2
      max: "settings:fuel-plugin-qlogic-sriov.nic_10G_vlan_max_range.vlaue - 1"
 
@@ -53,19 +53,19 @@ attributes:
         error : "Invalid VLAN Number. Please use number between 2-4094"
      restrictions:
      - condition: "(settings:fuel-plugin-qlogic-sriov.nic_10G.value == false and settings:fuel-plugin-qlogic-sriov.nic_vlan_support.value == false) or (settings:fuel-plugin-qlogic-sriov.nic_10G_vlan_max_range.value == settings:fuel-plugin-qlogic-sriov.nic_10G_vlan_min_range.value) or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"   
-       message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type and VLAN MAX should be greater than VLAN MIN"
+       message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 10G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type and VLAN MAX should be greater than VLAN MIN"
    
    nic_fastlinq:
      value: false
      label: 'Enable SR-IOV for QLogic 25G/40G/100G Ethernet'
-     Description: 'Enable SRIOV Support for QLogic 25G/40G/100G Single and Dual Port Adapter'
+     Description: 'Enable SR-IOV Support for QLogic 25G/40G/100G Single and Dual Port Adapter'
      weight: 17
      type: 'checkbox'
    
    num_fastlinq_vfs:
      value: '16'
      label: 'Number of VFs'
-     description: 'Number of Virtual Functions to create on the Qlogic 25G/40G/100G NIC for single  port with Link UP'
+     description: 'Number of Virtual Functions to create on the QLogic 25G/40G/100G NIC for single  port with Link UP'
      weight: 18 
      type: 'text'
      regex:
@@ -73,12 +73,12 @@ attributes:
         error: "Invalid Virtual NICs number. Please use a number in the range of 1-64."
      restrictions:
      - condition: "settings:fuel-plugin-qlogic-sriov.nic_fastlinq.value == false or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
-       message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 25G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
+       message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 25G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
 
    nic_fastlinq_vlan_support:
      value: false
-     label: 'Enable VLAN for SRIOV-VF (25G/40G/100G)'
-     Description: 'This will Create SRIOV-NS with VLAN Support'
+     label: 'Enable VLAN for SR-IOV VF (25G/40G/100G)'
+     Description: 'This will assign VLAN to SR-IOV VFs'
      weight: 20
      type: 'checkbox'
 
@@ -93,7 +93,7 @@ attributes:
         error : "Invalid VLAN Number. Please use number between 2-4094"
      restrictions:
      - condition: "(settings:fuel-plugin-qlogic-sriov.nic_fastlinq.value == false and settings:fuel-plugin-qlogic-sriov.nic_fastlinq_vlan_support.value == false) or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
-       message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 25G/40G/100G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
+       message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 25G/40G/100G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type."
      min: 2
      max: "settings:fuel-plugin-qlogic-sriov.nic_fastlinq_vlan_max_range.vlaue - 1"
 
@@ -108,5 +108,5 @@ attributes:
         error : "Invalid VLAN Number. Please use number between 2-4094"
      restrictions:
      - condition: "(settings:fuel-plugin-qlogic-sriov.nic_fastlinq.value == false and settings:fuel-plugin-qlogic-sriov.nic_fastlinq_vlan_support.value == false) or (settings:fuel-plugin-qlogic-sriov.nic_fastlinq_vlan_max_range.value == settings:fuel-plugin-qlogic-sriov.nic_fastlinq_vlan_min_range.value) or settings:common.libvirt_type.value != 'kvm' or not (cluster:net_provider == 'neutron' and networking_parameters:segmentation_type == 'vlan')"
-       message: "For QLogic SR-IOV Plugin support in Compute Node, SRIOV should be enable for 25G/40G/100G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type and VLAN MAX should be greater than VLAN MIN"
+       message: "For QLogic SR-IOV Plugin support in Compute Node, SR-IOV should be enable for 25G/40G/100G NIC / Hypervisor Type Should be KVM / Networking should be Neutron/VLAN segmentation type and VLAN MAX should be greater than VLAN MIN"
 
